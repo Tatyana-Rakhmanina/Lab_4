@@ -1,80 +1,12 @@
-# Импортируем необходимые модули
-'''
-
-from flask import Flask, render_template
-import matplotlib.pyplot as plt
-import io
-import base64
-
-app = Flask(__name__)
-
-
-@app.route('/')
-def index():
-    # Генерируем данные для графика (здесь просто пример)
-    x = [1, 2, 3, 4, 5]
-    y = [10, 15, 7, 10, 13]
-
-    # Создаем график
-    plt.plot(x, y)
-
-    # Сохраняем график в байтовом объекте
-    img = io.BytesIO()
-    plt.savefig(img, format='png')
-    img.seek(0)
-
-    # Кодируем байтовый объект в base64
-    plot_url = base64.b64encode(img.getvalue()).decode()
-
-    # Отрисовываем шаблон страницы с графиком
-    return render_template('index.html', plot_url=plot_url)
-
-
-if __name__ == '__main__':
-    app.run(debug=True)
-
-    return
-   <!doctype html >
-    < title > Загрузка файла < / title >
-    < h1 > Загрузите файл Excel </h1 >
-    < form
-    method = post
-    enctype = multipart / form - data >
-    < input
-    type = file
-    name = file >
-    < input
-    type = submit
-    value = Построить >
-< / form >
-
-    html
-    <!DOCTYPE html >
-< html lang = "en" >
-< head >
-< meta
-charset = "UTF-8" >
-< title > Graph < / title >
-< / head >
-< body >
-< h1 > График < / h1 >
-
-< !-- Отображение
-графика
-на
-странице -->
-< img
-src = "data:image/png;base64,{{ plot_url }}" alt ="График">
-
-</body>
-</html>
-'''
+import docx
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import glob
 import sqlite3
 import os
+
+from PIL.Image import Image
 from flask import Flask, request, redirect, url_for
 from werkzeug.utils import secure_filename
 
@@ -92,11 +24,11 @@ cursor = connection.cursor()
 cursor.execute(''' CREATE TABLE IF NOT EXISTS Analyst (
 id_analyst INTEGER PRIMARY KEY,
 fio TEXT NOT NULL,
-birth DATE NOT NULL,
-sex INTEGER NOT NULL,
+birth TEXT NOT NULL,
+sex TEXT NOT NULL,
 email TEXT NOT NULL) ''')
-
-
+cursor.execute('INSERT INTO Analyst  VALUES (?,?,?,?,?)', (1, "Иванов Иван Иванович","1999.09.08","мужской","ffff@gmail.com"))
+connection.commit()
 
 # Создаем таблицу Types_of_visualization
 cursor.execute(''' CREATE TABLE IF NOT EXISTS Types_of_visualization(
@@ -106,25 +38,23 @@ name TEXT NOT NULL) ''')
 # Создаем таблицу Data
 cursor.execute(''' CREATE TABLE IF NOT EXISTS Data (
 id_data INTEGER PRIMARY KEY,
-measure TEXT,
-date DATE NOT NULL,
+segment TEXT,
+trade_group TEXT,
+date TEXT NOT NULL,
 sales REAL,
 sales_rrp REAL,
 markdown REAL,
 markdown_perc REAL,
 markup REAL,
-inv REAL,
-FOREIGN KEY (id_measure) REFERENCES Measure (id_measure)) ''')
+inv REAL) ''')
 
 # Создаем таблицу Report
 cursor.execute(''' CREATE TABLE IF NOT EXISTS Report (
 id_report INTEGER PRIMARY KEY,
-id_measure INTEGER NOT NULL,
-id_data INTEGER NOT NULL,
-id_analyst INTEGER NOT NULL,
-FOREIGN KEY (id_measure) REFERENCES Measure (id_measure),
-FOREIGN KEY (id_data) REFERENCES Date (id_measure),
-FOREIGN KEY (id_analyst) REFERENCES Analyst (id_measure)) ''')
+id_data INTEGER,
+id_analyst INTEGER ,
+FOREIGN KEY (id_data) REFERENCES Date (id_data),
+FOREIGN KEY (id_analyst) REFERENCES Analyst (id_analyst)) ''')
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
@@ -140,6 +70,19 @@ def check_excel_format(file_path):
     except Exception as e:
         print("Произошла ошибка при чтении файла:", e)
 
+# Сохранение графиков в файл Word
+@app.route('/save-report')
+def save_report(images):
+    output_dir = "output_folder"
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    for i, image_path in enumerate(images):
+        img = Image.open(image_path)
+        doc = docx.Document()
+        doc.add_picture(image_path)
+        doc.save(f"{output_dir}/image_{i + 1}.docx")
+
+    return 'Отчет успешно сохранен в файле report.docx'
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -155,47 +98,85 @@ def upload_file():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             check_excel_format(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             data = pd.read_excel(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            # Сохранение графиков в базе данных
-
-            cursor.execute('INSERT INTO Data (graph) VALUES (?)', (data['Дата'], data['Сегмент'], data['Товарная группа'], data['Продажа в оц'],data['Цена в РРЦ'], data['Скидка'],data['Скидка%'], data['Наценка'],data['Остаток руб']))
+            cursor.execute('INSERT INTO Data (segment,trade_group,date,sales,markdown,markdown_perc,sales_rrp,markup,inv) VALUES (?,?,?,?,?,?,?,?,?)', (data['Дата'], data['Сегмент'], data['Товарная группа'], data['Продажа в оц'],data['Цена в РРЦ'], data['Скидка'],data['Скидка%'], data['Наценка'],data['Остаток руб']))
             connection.commit()
-
             # График
             ax=plt.plot(data['Дата'], data['Продажа в оц'])
             plt.xlabel('Дата')
             plt.ylabel('Продажа в оц')
             plt.title('График продаж в динамике')
+            plt.savefig('D:/result/plot1.jpg', format='jpg')
+            plt.show()
+            # График
+            ax = plt.plot(data['Дата'], data['Наценка'])
+            plt.xlabel('Дата')
+            plt.ylabel('Наценка')
+            plt.title('График продаж в динамике')
+            plt.savefig('D:/result/plot2.jpg', format='jpg')
+            plt.show()
+            # График
+            ax = plt.plot(data['Дата'], data['Остатки руб'])
+            plt.xlabel('Дата')
+            plt.ylabel('Остатки руб')
+            plt.title('График продаж в динамике')
+            plt.savefig('D:/result/plot3.jpg', format='jpg')
             plt.show()
             # Столбиковая диаграмма
             plt.bar(data['Дата'], data['Цена в РРЦ'])
             plt.xlabel('Дата')
             plt.ylabel('Цена в РРЦ')
             plt.title('Столбиковая диаграмма цен в РРЦ')
+            plt.savefig('D:/result/plot4.jpg', format='jpg')
             plt.show()
-
+            # Столбиковая диаграмма
+            plt.bar(data['Дата'], data['Скидка'])
+            plt.xlabel('Дата')
+            plt.ylabel('Скидка')
+            plt.title('Столбиковая диаграмма цен в РРЦ')
+            plt.savefig('D:/result/plot5.jpg', format='jpg')
+            plt.show()
+            # Столбиковая диаграмма
+            plt.bar(data['Дата'], data['Скидка%'])
+            plt.xlabel('Дата')
+            plt.ylabel('Скидка%')
+            plt.title('Столбиковая диаграмма цен в РРЦ')
+            plt.savefig('D:/result/plot6.jpg', format='jpg')
+            plt.show()
             # Рассеивание
             fig, ax = plt.subplots(figsize=(10, 6))
             ax.scatter(x=data['Остаток руб'], y=data['Цена в РРЦ'])
             plt.xlabel("Остаток руб")
             plt.ylabel("Цена в РРЦ")
-
+            plt.savefig('D:/result/plot7.jpg', format='jpg')
             plt.show()
-
             # Круговая диаграмма
             fig1, ax1 = plt.subplots()
             ax1.pie(data['Скидка'], labels=data['Дата'], autopct='%1.1f%%')
+            plt.savefig('D:/result/plot8.jpg', format='jpg')
             plt.show()
-
-            f= glob.glob('D:\static')
-            ax.get_figure().savefig(os.path.splitext(f)[0] + '.png')
-            plt.savefig('D:/static/plot.png')
+            # Круговая диаграмма
+            fig1, ax1 = plt.subplots()
+            ax1.pie(data['Скидка%'], labels=data['Дата'], autopct='%1.1f%%')
+            plt.savefig('D:/result/plot9.jpg', format='jpg')
+            plt.show()
+            # Круговая диаграмма
+            fig1, ax1 = plt.subplots()
+            ax1.pie(data['Продажа в оц'], labels=data['Дата'], autopct='%1.1f%%')
+            plt.savefig('D:/result/plot10.jpg', format='jpg')
+            plt.show()
+            images = ["D:/result/plot1.jpg", "D:/result/plot2.jpg", "D:/result/plot3.jpg","D:/result/plot4.jpg", "D:/result/plot5.jpg", "D:/result/plot6.jpg", "D:/result/plot7.jpg", "D:/result/plot8.jpg","D:/result/plot9.jpg", "D:/result/plot10.jpg"]
+            cursor.execute('SELECT id_data FROM Data ORDER BY id DESC LIMIT 1')
+            id_data = cursor.fetchone()
+            cursor.execute('INSERT INTO Report (id_data,id_analyst) VALUES (?,?)',
+                           (id_data, 1))
+            connection.commit()
+            save_report(images)
 
             return redirect(url_for('static'))
 
     return '''
  <!doctype html>
-<title font-size:25px;
-	color:#D6CFCB>Загрузка файла</title>
+<title>Загрузка файла</title>
 <h1>Загрузите файл Excel</h1>
 <form method=post enctype=multipart/form-data>
 <br/>
