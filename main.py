@@ -159,6 +159,7 @@ def upload_file():
 
             cursor.execute('INSERT INTO Data (graph) VALUES (?)', (data['Дата'], data['Сегмент'], data['Товарная группа'], data['Продажа в оц'],data['Цена в РРЦ'], data['Скидка'],data['Скидка%'], data['Наценка'],data['Остаток руб']))
             connection.commit()
+
             # График
             ax=plt.plot(data['Дата'], data['Продажа в оц'])
             plt.xlabel('Дата')
