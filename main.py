@@ -79,6 +79,14 @@ def save_report(images):
     for i, image_path in enumerate(images):
         img = Image.open(image_path)
         doc = docx.Document()
+        cursor.execute('SELECT id_data FROM Data ORDER BY id DESC LIMIT 1')
+        id_data = cursor.fetchone()
+        connection.commit()
+        cursor.execute("SELECT sum(sales) FROM Data where id_data= ?", (id_data))
+        sum = cursor.fetchone()
+        connection.commit()
+        new_paragraph = doc.add_paragraph()
+        new_paragraph.add_run(f'Общая сумма продаж={sum}')
         doc.add_picture(image_path)
         doc.save(f"{output_dir}/image_{i + 1}.docx")
 
