@@ -164,7 +164,11 @@ def upload_file():
             ax1.pie(data['Продажа в оц'], labels=data['Дата'], autopct='%1.1f%%')
             plt.savefig('D:/result/plot10.jpg', format='jpg')
             plt.show()
-            images = ["D:/result/plot1.jpg", "D:/result/plot2.jpg", "D:/result/plot3.jpg","D:/result/plot4.jpg", "D:/result/plot5.jpg", "D:/result/plot6.jpg", "D:/result/plot7.jpg", "D:/result/plot8.jpg","D:/result/plot9.jpg", "D:/result/plot10.jpg"]
+            # Точечная диаграмма
+            plt.scatter(data['Дата'], data['Продажа в оц'])
+            plt.savefig('D:/result/plot11.jpg', format='jpg')
+            plt.show()
+            images = ["D:/result/plot1.jpg", "D:/result/plot2.jpg", "D:/result/plot3.jpg","D:/result/plot4.jpg", "D:/result/plot5.jpg", "D:/result/plot6.jpg", "D:/result/plot7.jpg", "D:/result/plot8.jpg","D:/result/plot9.jpg", "D:/result/plot10.jpg","D:/result/plot11.jpg"]
             cursor.execute('SELECT id_data FROM Data ORDER BY id DESC LIMIT 1')
             id_data = cursor.fetchone()
             cursor.execute('INSERT INTO Report (id_data,id_analyst) VALUES (?,?)',
