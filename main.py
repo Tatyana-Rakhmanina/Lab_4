@@ -83,6 +83,7 @@ def save_report(images):
         id_data = cursor.fetchone()
         connection.commit()
         cursor.execute("SELECT sum(sales) FROM Data where id_data= ?", (id_data))
+
         sum = cursor.fetchone()
         connection.commit()
         new_paragraph = doc.add_paragraph()
